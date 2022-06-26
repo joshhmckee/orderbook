@@ -1,8 +1,7 @@
 import websocket
 import json
 import threading
-import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimations
+import time
 
 # Collect FTX coin data using a websocket connection
 
@@ -10,17 +9,18 @@ def on_open(ws):
     print("Opened")
 
     # Send channel and market subscribe msg to websocket
-    msg = json.dumps({'op': 'subscribe', 'channel': 'orderbook', 'market': 'BTC-PERP'})
+    msg = json.dumps({'op': 'subscribe', 'channel': 'orderbook', 'market': 'APE-PERP'})
     ws.send(msg)
 
 bid = []
 ask = []
-best_bid = 0
-best_ask = 0
+best_bids = []
+best_asks = []
+times = []
 
 def on_message(ws, message):
     global bid, ask
-    global best_bid, best_ask
+    global best_bids, best_asks, times
     # Format orderbook message and store updata data in a dict
     msg = json.loads(message)
     if msg['type'] == 'partial':
@@ -66,8 +66,9 @@ def on_message(ws, message):
               ask.append(neworder)
               break
     
-    best_bid = bid[0][0]
-    best_ask = ask[0][0]
+    best_bids.append(bid[0][0])
+    best_asks.append(ask[0][0])
+    times.append(time.time())
 
 def on_error(ws, error):
     print("Error: ", error)
@@ -76,7 +77,7 @@ def on_close(ws, close_status_code, close_msg):
     print("Closed")
 
 # Setup websocket to run as background thread: https://stackoverflow.com/questions/65656221/binance-websocket-realtime-plot-without-blocking-code?rq=1
-def wsthread(best_bid, best_ask):
+def wsthread(best_bid, best_ask, times):
     ws = websocket.WebSocketApp("wss://ftx.com/ws/",
                                     on_open=on_open,
                                     on_message=on_message,
@@ -84,5 +85,23 @@ def wsthread(best_bid, best_ask):
                                     on_close=on_close)
     ws.run_forever()
 
-t = threading.Thread(target=wsthread, args=(best_bid, best_ask,)) #args are the vars to get access to outside the websocket
+t = threading.Thread(target=wsthread, args=(best_bids, best_asks, times)) #args are the vars to get access to outside the websocket
 t.start()
+
+
+
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+plt.style.use('dark_background')
+fig, ax = plt.subplots()
+
+def animate(i):
+  ax.clear()
+  refreshLength = -3000
+  ax.plot(times[refreshLength:], best_bids[refreshLength:])
+  ax.plot(times[refreshLength:], best_asks[refreshLength:])
+
+anim = FuncAnimation(fig, animate, interval=10)
+
+plt.show()
