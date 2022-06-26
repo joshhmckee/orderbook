@@ -1,0 +1,6 @@
+
+- Chart dashboard with matplotlib
+    - Live bid/ask prices with trades (top left)
+    - Orderbook volume bar chart (bottom left)
+    - Ob cumulative volume
+
